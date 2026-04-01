@@ -361,6 +361,80 @@ function Start_Triplets_Mission()
     end, {}, 5, 10) 
 end
 
+-- =====================================================
+-- PRECISION WEATHER CONTROL SYSTEM (TRAINING SERVER)
+-- =====================================================
+
+
+-- CONFIG (Visibility in meters)
+
+local WeatherPresets = {
+    ["1_2_NM"] = 926,    -- 0.5 nautical mile
+    ["3_4_NM"] = 1389,   -- 0.75 nautical mile
+    ["1_NM"]   = 1852,   -- 1 nautical mile
+    ["CLEAR"]  = 20000
+}
+
+local FogThickness = 3000
+
+-- CORE FUNCTION
+
+local function SetWeather(visibility, label)
+
+    local success, err = pcall(function()
+
+        if UTILS and UTILS.Weather then
+            UTILS.Weather.SetFogThickness(visibility >= 20000 and 0 or FogThickness)
+            UTILS.Weather.SetFogVisibilityDistance(visibility)
+        else
+            env.error("UTILS.Weather not available!")
+        end
+
+        MESSAGE:New(
+            string.format("METAR UPDATE:\nVisibility set to %s", label),
+            15
+        ):ToAll()
+
+        env.info("Weather set to: " .. label)
+
+    end)
+
+    if not success then
+        env.error("SetWeather ERROR: " .. tostring(err))
+    end
+end
+
+-- PRESET FUNCTIONS
+-- =====================================================
+
+local function Set_1_2_NM()
+    SetWeather(WeatherPresets["1_2_NM"], "1/2 NM (926m)")
+end
+
+local function Set_3_4_NM()
+    SetWeather(WeatherPresets["3_4_NM"], "3/4 NM (1389m)")
+end
+
+local function Set_1_NM()
+    SetWeather(WeatherPresets["1_NM"], "1 NM (1852m)")
+end
+
+local function Set_Clear()
+    SetWeather(WeatherPresets["CLEAR"], "CAVOK (Clear)")
+end
+
+-- End Mission
+function FinalizeMission()
+    trigger.action.outText("Restarting Mission on server in 10 seconds...", 10)
+    
+    -- Delay the actual end so players can read the message
+    timer.scheduleFunction(function()
+        -- This command triggers the standard DCS Mission End/Victory screen
+        trigger.action.setUserFlag(666, true) -- Optional: trigger an ME flag if needed
+        trigger.action.endMission() 
+    end, nil, timer.getTime() + 10)
+end
+
 -- ============================================================================
 -- INITIALIZE ALL MENUS
 -- ============================================================================
@@ -400,5 +474,16 @@ MENU_COALITION_COMMAND:New(coalition.side.BLUE, "Check Captured Sectors", MenuSt
     report = report .. "\nSAM Network Strength: " .. (100 - (CapturedCount * 33)) .. "%"
     MESSAGE:New(report, 15):ToAll() 
 end)
+
+-- Weather Menu
+local WeatherMenu = MENU_MISSION:New("Weather Presets")
+
+MENU_MISSION_COMMAND:New("Set 1/2 NM Visibility", WeatherMenu, Set_1_2_NM)
+MENU_MISSION_COMMAND:New("Set 3/4 NM Visibility", WeatherMenu, Set_3_4_NM)
+MENU_MISSION_COMMAND:New("Set 1 NM Visibility", WeatherMenu, Set_1_NM)
+MENU_MISSION_COMMAND:New("Set Clear Weather", WeatherMenu, Set_Clear)
+
+-- End Mission
+local EndButton = MENU_COALITION_COMMAND:New(coalition.side.BLUE, "--- Restarting Mission ---", nil, FinalizeMission)
 
 env.info("AUDITED MISSION SCRIPT LOADED SUCCESSFULLY")
