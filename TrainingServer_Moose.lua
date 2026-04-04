@@ -9,12 +9,84 @@ local bomber_mission = 0
 local AmbushTriggered = false 
 local TankerCommands = {} 
 
--- Carrier Based Tanker
--- Ensure "USS Roosevelt" and "Arco21" exist in the Mission Editor 
-local tankerStennis = RECOVERYTANKER:New("USS Roosevelt", "Arco21")
-tankerStennis:SetTACAN(13, "TKR") 
-tankerStennis:SetRadio(313) 
-tankerStennis:__Start(1) 
+-- =============================================
+-- Carrier Landing Logger & Tanker Setup
+-- Best practices: multiplayer-safe, error-handled
+-- =============================================
+
+-- Carrier-Based Tanker Setup
+local status, tankerStennis = pcall(function()
+    local t = RECOVERYTANKER:New("USS Roosevelt", "Arco21")
+    t:SetTACAN(13, "TKR")
+    t:SetRadio(313)
+    t:__Start(1)
+    return t
+end)
+if not status then
+    env.info("[ERROR] Failed to start Carrier Tanker")
+end
+
+-- ===============================
+-- Carrier Landing Logging
+-- ===============================
+CarrierTrapLog = CarrierTrapLog or {}
+
+-- Event handler
+CarrierTrapLog = {
+    landings = {}
+}
+
+function CarrierTrapLog:onEvent(event)
+    if not event or not event.initiator then return end
+    if event.id ~= world.event.S_EVENT_LAND then return end
+
+    local unit = event.initiator
+    if not Unit.isExist(unit) then return end
+
+    local playerName = unit:getPlayerName() or "AI"
+    local carrier = event.place and event.place:getName() or "Unknown Carrier"
+
+    -- Basic grading placeholder
+    local grade = "OK"  -- Replace with your LSO grading logic
+
+    -- Store landing safely
+    CarrierTrapLog.landings[playerName] = CarrierTrapLog.landings[playerName] or {}
+    table.insert(CarrierTrapLog.landings[playerName], {
+        time = timer.getTime(),
+        carrier = carrier,
+        grade = grade,
+        position = unit:getPoint()
+    })
+
+    env.info(string.format("[TRAP] %s landed on %s: %s", playerName, carrier, grade))
+end
+
+world.addEventHandler(CarrierTrapLog)
+
+-- ===============================
+-- Data Export Function (JSON)
+-- ===============================
+function CarrierTrapLog:exportToFile()
+    local path = lfs.writedir() .. "Logs\\carrier_trap_log.json"
+    local success, err = pcall(function()
+        local file = io.open(path, "w")
+        if not file then return end
+
+        -- Simple JSON encoding using dkjson (add dkjson.lua in mission scripts)
+        local json = require("dkjson")
+        file:write(json.encode(CarrierTrapLog.landings))
+        file:close()
+    end)
+    if not success then
+        env.info("[ERROR] Failed to export carrier trap log: " .. tostring(err))
+    end
+end
+
+-- Schedule periodic export every 5 minutes
+timer.scheduleFunction(function()
+    CarrierTrapLog:exportToFile()
+    return timer.getTime() + 300  -- 300 seconds = 5 minutes
+end, {}, timer.getTime() + 5)
 
 -- 1. Enemy AIRCRAFT SPAWNING SYSTEM
 local function SpawnAircraft(PlaneTemplateName)     
