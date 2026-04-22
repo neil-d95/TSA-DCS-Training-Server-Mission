@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import requests
 from datetime import datetime
 
-WEBHOOK_URL = "https://discord.com/api/webhooks/918230275694157864/5pgqY68hwrAqMi0VNY-Jb6U6VqcBv1Mlt_-lK0IC1Q0bpkG14EhkK0rxmElQsCZEH1A2"
+WEBHOOK_URL = ""
 JSON_FILE = r"C:\Users\YourName\Saved Games\DCS\Logs\carrier_discord.json"
 
 # Load the JSON payload
