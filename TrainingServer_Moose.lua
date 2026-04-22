@@ -9,12 +9,27 @@ local bomber_mission = 0
 local AmbushTriggered = false 
 local TankerCommands = {} 
 
--- Carrier Based Tanker
--- Ensure "USS Roosevelt" and "Arco21" exist in the Mission Editor 
-local tankerStennis = RECOVERYTANKER:New("USS Roosevelt", "Arco21")
-tankerStennis:SetTACAN(13, "TKR") 
-tankerStennis:SetRadio(313) 
-tankerStennis:__Start(1) 
+-- =============================================
+-- Tanker Setup (FIXED)
+-- =============================================
+
+assert(RECOVERYTANKER, "MOOSE not loaded!")
+
+-- ===============================
+-- Tanker Setup (delayed start)
+-- ===============================
+timer.scheduleFunction(function()
+    local ok, err = pcall(function()
+        local t = RECOVERYTANKER:New("USS Roosevelt", "Arco21")
+        t:SetTACAN(13, "TKR")
+        t:SetRadio(313)
+        t:__Start(10)
+    end)
+
+    if not ok then
+        env.info("[ERROR] Tanker failed: " .. tostring(err))
+    end
+end, {}, timer.getTime() + 5)
 
 -- 1. Enemy AIRCRAFT SPAWNING SYSTEM
 local function SpawnAircraft(PlaneTemplateName)     
